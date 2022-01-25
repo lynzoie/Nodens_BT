@@ -15,7 +15,7 @@ int PulseSensorPurplePin = 0;        // Pulse Sensor PURPLE WIRE connected to AN
 int LED13 = 13;   //  The on-board Arduion LED
 
 
-int Signal;                // holds the incoming raw data. Signal value can range from 0-1024
+int HR_Val;                // holds the incoming raw data. Signal value can range from 0-1024
 int Threshold = 550;            // Determine which Signal to "count as a beat", and which to ingore.
 
 void setup() {
@@ -23,8 +23,8 @@ void setup() {
   pinMode(LED13,OUTPUT);         // pin that will blink to your heartbeat!
   
   ///////////////// BLUETOOTH SETUP /////////////////
-  Serial.begin(9600);
-  Serial.println("HM10 serial started at 9600");
+   Serial.begin(9600);
+  // Serial.println("HM10 serial started at 9600");
   HM10.begin(9600);
 
   ////////// ACCELEROMETER/GYROSCOPE SETUP //////////
@@ -74,78 +74,60 @@ void BT_Mod(val) {
   }
 }*/
 
-
-int HR_Sensor() {
-  Signal = analogRead(PulseSensorPurplePin);    // read PulseSensor's value 
-  Serial.println(Signal);                    // Send the Signal value to Serial Plotter.
-  return Signal;
+void Send_Data(String String_Message, SoftwareSerial HM10) {      // Converts strings to char arrays so that we can transmit data via Bluetooth
+  char* char_message = (char*) malloc(sizeof(char)*String_Message.length()+1);
+  String_Message.toCharArray(char_message, String_Message.length()+1);
+  HM10.write(char_message);
+  free(char_message);
+  
 }
+String HR_Str;
+String AG_Str[6];
 
-void Acc_Gyro() {
+void loop() {
+  
+  HR_Val = analogRead(PulseSensorPurplePin); // 10-bit number, convert to string
+
+  // get values of Accelerometer/Gyroscope
   sensors_event_t a, g, temp;
-  mpu.getEvent(&a, &g, &temp);
+  mpu.getEvent(&a, &g, &temp); 
 
-  /* Print out the values */
-  Serial.print(",");
-  Serial.print(a.acceleration.x);
+  // Display data on serial plotter
+  Serial.println(HR_Val);
+  Serial.print(a.acceleration.x); 
   Serial.print(",");
   Serial.print(a.acceleration.y);
   Serial.print(",");
   Serial.print(a.acceleration.z);
-//  Serial.println(" m/s^2");
-
   Serial.print(",");
   Serial.print(g.gyro.x);
   Serial.print(",");
   Serial.print(g.gyro.y);
   Serial.print(",");
-  Serial.print(g.gyro.z);
-//  Serial.println(" rad/s");
-
-  Serial.println("");
+  Serial.print(g.gyro.z);  
   
-}
-
-int HR_Val;
-void loop() {
-  HR_Val = HR_Sensor();
-  //Acc_Gyro();
-
-  // Sending HR_Val
-  HM10.write(HR_Val);
-
+  // Creating data packets to send to Bluetooth module
+  HR_Str    = "H"  + String(HR_Val);
+  AG_Str[0] = "AX" + String(a.acceleration.x);
+  AG_Str[1] = "AY" + String(a.acceleration.y);
+  AG_Str[2] = "AZ" + String(a.acceleration.z);
+  AG_Str[3] = "GX" + String(g.gyro.x);
+  AG_Str[4] = "GY" + String(g.gyro.y);
+  AG_Str[5] = "GZ" + String(g.gyro.z);
+  // Sending heart-rate, accelerometer, and gyroscope data
+  Send_Data(HR_Str, HM10);
+  Send_Data(AG_Str[0],HM10);
+  Send_Data(AG_Str[1],HM10);
+  Send_Data(AG_Str[2],HM10);
+  Send_Data(AG_Str[3],HM10);
+  Send_Data(AG_Str[4],HM10);
+  Send_Data(AG_Str[5],HM10);
   
-//  Signal = analogRead(PulseSensorPurplePin);    // read PulseSensor's value 
-//  Serial.println(Signal);                    // Send the Signal value to Serial Plotter.
-
-//  if(Signal > Threshold){                          // If the signal is above "550", then "turn-on" Arduino's on-Board LED.
-//    digitalWrite(LED13,HIGH);
-//  } else {
-//    digitalWrite(LED13,LOW);                //  Else, the sigal must be below "550", so "turn-off" this LED.
-//  }
+  // Send_Data(GPS.x);
   
-  /* Get new sensor events with the readings */
-//  sensors_event_t a, g, temp;
-//  mpu.getEvent(&a, &g, &temp);
-//
-//  /* Print out the values */
-//  Serial.print(",");
-//  Serial.print(a.acceleration.x);
-//  Serial.print(",");
-//  Serial.print(a.acceleration.y);
-//  Serial.print(",");
-//  Serial.print(a.acceleration.z);
-////  Serial.println(" m/s^2");
-//
-//  Serial.print(",");
-//  Serial.print(g.gyro.x);
-//  Serial.print(",");
-//  Serial.print(g.gyro.y);
-//  Serial.print(",");
-//  Serial.print(g.gyro.z);
-////  Serial.println(" rad/s");
-//
-//  Serial.println("");
+  // Send_Data(GPS.y);
+  
+  // Send_Data(GPS.z);
   delay(10);
   
 }
