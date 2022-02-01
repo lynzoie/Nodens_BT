@@ -1,5 +1,8 @@
 // Bluetooth libraries and variables
 #include <SoftwareSerial.h>
+#define USE_ARDUINO_INTERRUPTS true
+#include <PulseSensorPlayground.h>
+
 SoftwareSerial HM10(2,3);
 char appData;  
 String inData = "";
@@ -11,26 +14,27 @@ String inData = "";
 Adafruit_MPU6050 mpu;
 
 // Heart Rate Sensor variables
-int PulseSensorPurplePin = 0;        // Pulse Sensor PURPLE WIRE connected to ANALOG PIN 0
-int LED13 = 13;   //  The on-board Arduion LED
+int PulseWire = 0;                  // Pulse Sensor PURPLE WIRE connected to ANALOG PIN 0
+int LED13 = 13;
+PulseSensorPlayground pulseSensor;  // Create PulseSensorPlayground object
 
-
-int HR_Val;                // holds the incoming raw data. Signal value can range from 0-1024
-int Threshold = 550;            // Determine which Signal to "count as a beat", and which to ingore.
+int HR_Val;                         // holds the incoming raw data. Signal value can range from 0-1024
+int Threshold = 550;                // Determine which Signal to "count as a beat", and which to ingore.
 
 void setup() {
+  Serial.begin(9600);
   //////////// HEART RATE SENSOR SETUP //////////////
-  pinMode(LED13,OUTPUT);         // pin that will blink to your heartbeat!
-  
+  pulseSensor.analogInput(PulseWire);
+  pulseSensor.blinkOnPulse(LED13);   // pin that will blink to your heartbeat!
+  pulseSensor.setThreshold(Threshold);
+  pulseSensor.begin();
+
   ///////////////// BLUETOOTH SETUP /////////////////
-   Serial.begin(9600);
   // Serial.println("HM10 serial started at 9600");
   HM10.begin(9600);
 
   ////////// ACCELEROMETER/GYROSCOPE SETUP //////////
   //Serial.begin(115200);
-  //Serial.println("Initialize MPU6050");
-
   // find MPU6050
   if (!mpu.begin()) {
     //Serial.println("Failed to find MPU6050 chip");
@@ -86,28 +90,31 @@ String AG_Str[6];
 
 void loop() {
   
-  HR_Val = analogRead(PulseSensorPurplePin); // 10-bit number, convert to string
-
+  // HR_Val = analogRead(PulseSensorPurplePin); // 10-bit number, convert to string
+  HR_Val = pulseSensor.getBeatsPerMinute();
+  if (pulseSensor.sawStartOfBeat()) {
+    Serial.println(HR_Val);
+  }
   // get values of Accelerometer/Gyroscope
   sensors_event_t a, g, temp;
   mpu.getEvent(&a, &g, &temp); 
 
   // Display data on serial plotter
-  Serial.println(HR_Val);
-  Serial.print(a.acceleration.x); 
-  Serial.print(",");
-  Serial.print(a.acceleration.y);
-  Serial.print(",");
-  Serial.print(a.acceleration.z);
-  Serial.print(",");
-  Serial.print(g.gyro.x);
-  Serial.print(",");
-  Serial.print(g.gyro.y);
-  Serial.print(",");
-  Serial.print(g.gyro.z);  
+//  Serial.print(HR_Val);
+//  Serial.print(a.acceleration.x); 
+//  Serial.print(",");
+//  Serial.print(a.acceleration.y);
+//  Serial.print(",");
+//  Serial.print(a.acceleration.z);
+//  Serial.print(",");
+//  Serial.print(g.gyro.x);
+//  Serial.print(",");
+//  Serial.print(g.gyro.y);
+//  Serial.print(",");
+//  Serial.print(g.gyro.z);  
   
   // Creating data packets to send to Bluetooth module
-  HR_Str    = "H"  + String(HR_Val);
+  HR_Str    = "HR"  + String(HR_Val);
   AG_Str[0] = "AX" + String(a.acceleration.x);
   AG_Str[1] = "AY" + String(a.acceleration.y);
   AG_Str[2] = "AZ" + String(a.acceleration.z);
