@@ -15,8 +15,8 @@ Adafruit_MPU6050 mpu;
 // Heart Rate Sensor variables
 int PulseWire = 0;                  // Pulse Sensor PURPLE WIRE connected to ANALOG PIN 0
 int LED13 = 13;
-int HR_Val;                         // holds the incoming raw data. Signal value can range from 0-1024
-int Threshold = 400;                // Determine which Signal to "count as a beat", and which to ingore.
+int HR_Val = 0;                         // holds the incoming raw data. Signal value can range from 0-1024
+int Threshold = 600;                // Determine which Signal to "count as a beat", and which to ingore.
 PulseSensorPlayground pulseSensor;  // Create PulseSensorPlayground object
 
 // GPS Module variables
@@ -29,7 +29,7 @@ SoftwareSerial ss(RXPin, TXPin);    // The serial connection to the GPS device
 
 void setup() {
   Serial.begin(9600);
-  
+  Serial.println("Starting Nodens...");
   //////////// HEART RATE SENSOR SETUP //////////////
   pulseSensor.analogInput(PulseWire);
   pulseSensor.blinkOnPulse(LED13);   // pin that will blink to your heartbeat!
@@ -38,11 +38,11 @@ void setup() {
 
   ///////////////// BLUETOOTH SETUP /////////////////
   HM10.begin(9600);
-  // HM10.write("Connection Established");   // indicate BT-Phone connection has been made
+  HM10.write("Connection Established");   // indicate BT-Phone connection has been made
+  
   ////////// ACCELEROMETER/GYROSCOPE SETUP //////////
-  // find MPU6050
   if (!mpu.begin()) {
-    //Serial.println("Failed to find MPU6050 chip");
+    Serial.println("Failed to find MPU6050 chip");
     while (1) {
       delay(10);
     }
@@ -53,7 +53,6 @@ void setup() {
   
   ///////////////// GPS SETUP ///////////////////////
   ss.begin(9600);
-  ss.write("GPS Module started");   // indicate BT-Phone connection has been made
 }
 
 void Send_Data(String String_Message, SoftwareSerial HM10) {      // Converts strings to char arrays so that we can transmit data via Bluetooth
@@ -76,6 +75,9 @@ void loop() {
     delay(10);
     HM10.write(Serial.read());
   }
+  if (inData == "S"){
+    HM10.write("Sending packets...");
+  }
   inData = "S";
   while ( inData == "S" && inData != "T") {     // send packets when start condition is given "S", stop when stop condition is given "T"
     // get heart-rate data
@@ -87,22 +89,23 @@ void loop() {
     mpu.getEvent(&a, &g, &temp);  
 
     // get GPS data
-    ss.listen(); 
-    while (ss.available() > 0){
-      gps.encode(ss.read());
-      if (gps.location.isUpdated()){ 
-        Serial.println(gps.location.lat());
-        Serial.println(gps.location.lng());
-        gps_lat = gps.location.lat();       // store lattitude in double variable
-        gps_lng = gps.location.lng();       // store longitude in double variable
-
-      }
-    }
+//    ss.listen(); 
+//    while (ss.available() > 0){
+//      gps.encode(ss.read());
+//      if (gps.location.isUpdated()){ 
+//        gps_lat = gps.location.lat();       // store lattitude in double variable
+//        gps_lng = gps.location.lng();       // store longitude in double variable
+//      }
+//    }
+    // Test GPS Values
+    gps_lat = 39.1317078;
+    gps_lng = -84.5174585;
+    
     if (gps_lat != 0 && gps_lng != 0) {     // if we get valid GPS data, get ready to send data packet via BT
-      Serial.println(gps_lat);
-      Serial.println(gps_lng);
       // Creating data packets to send to Bluetooth module
-      String Data_Packet = "HR" + String(HR_Val) + "AX" + String(a.acceleration.x) + "AY" + String(a.acceleration.y) + "AZ" + String(a.acceleration.z) + "GX" + String(g.gyro.x) + "GY" + String(g.gyro.y) + "GZ" + String(g.gyro.z) + "LA" + String(gps_lat) + "LO" + String(gps_lng);
+//      Serial.println(gps_lat);
+//      Serial.println(gps_lng);
+      String Data_Packet = "FFFFHR" + String(HR_Val) + "AX" + String(a.acceleration.x) + "AY" + String(a.acceleration.y) + "AZ" + String(a.acceleration.z) + "GX" + String(g.gyro.x) + "GY" + String(g.gyro.y) + "GZ" + String(g.gyro.z) + "LA" + String(gps_lat) + "LO" + String(gps_lng) + "DDDD";
       HM10.listen();                        // listen to BT again so we can send data ports
 //      Send_Data(Data_Packet, HM10);         // assume we're getting heart rate for now, use below if statement
       if (pulseSensor.sawStartOfBeat()) {   // send packets only if we get valid heart beat
@@ -115,6 +118,7 @@ void loop() {
       String tempData = String(appData);    // check what inData value we're getting
       if (tempData == "T"){
         inData = "T";
+        HM10.write("Stopping packets...");
       }
       else {
         inData = "S";
