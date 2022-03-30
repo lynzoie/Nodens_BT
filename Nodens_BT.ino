@@ -16,14 +16,14 @@ Adafruit_MPU6050 mpu;
 int PulseWire = 0;                  // Pulse Sensor PURPLE WIRE connected to ANALOG PIN 0
 int LED13 = 13;
 int HR_Val = 0;                         // holds the incoming raw data. Signal value can range from 0-1024
-int Threshold = 600;                // Determine which Signal to "count as a beat", and which to ingore.
+int Threshold = 560;                // Determine which Signal to "count as a beat", and which to ingore.
 PulseSensorPlayground pulseSensor;  // Create PulseSensorPlayground object
 
 // GPS Module variables
 #include <TinyGPS++.h>
 static const int RXPin = 6, TXPin = 5;
-double gps_lat = 0;
-double gps_lng = 0;
+float gps_lat = 0;
+float gps_lng = 0;
 TinyGPSPlus gps;
 SoftwareSerial ss(RXPin, TXPin);    // The serial connection to the GPS device
 
@@ -100,16 +100,15 @@ void loop() {
     // Test GPS Values
     gps_lat = 39.1317078;
     gps_lng = -84.5174585;
-    
+//    Serial.println(gps_lat,7);
+//    Serial.println(gps_lng,7);
     if (gps_lat != 0 && gps_lng != 0) {     // if we get valid GPS data, get ready to send data packet via BT
       // Creating data packets to send to Bluetooth module
-//      Serial.println(gps_lat);
-//      Serial.println(gps_lng);
-      String Data_Packet = "FFFFHR" + String(HR_Val) + "AX" + String(a.acceleration.x) + "AY" + String(a.acceleration.y) + "AZ" + String(a.acceleration.z) + "GX" + String(g.gyro.x) + "GY" + String(g.gyro.y) + "GZ" + String(g.gyro.z) + "LA" + String(gps_lat) + "LO" + String(gps_lng) + "DDDD";
+      String Data_Packet = "FFFFHR" + String(HR_Val) + "AX" + String(a.acceleration.x) + "AY" + String(a.acceleration.y) + "AZ" + String(a.acceleration.z) + "GX" + String(g.gyro.x) + "GY" + String(g.gyro.y) + "GZ" + String(g.gyro.z) + "LA" + String(gps_lat,7) + "LO" + String(gps_lng,7) + "DDDD";
       HM10.listen();                        // listen to BT again so we can send data ports
 //      Send_Data(Data_Packet, HM10);         // assume we're getting heart rate for now, use below if statement
       if (pulseSensor.sawStartOfBeat()) {   // send packets only if we get valid heart beat
-        Serial.println(HR_Val);
+//        Serial.println(HR_Val);
         Send_Data(Data_Packet, HM10);
       } 
       delay(20);
